@@ -69,11 +69,12 @@ const loginUser = (userLogin) => {
             resolve({
                 status: 'OK',
                 message: 'SUCCESS',
+                data: checkUser,
                 access_token,
                 refresh_token
             })
         } catch (e) {
-            console.log('aaa')
+           
             reject(e)
         }
     })

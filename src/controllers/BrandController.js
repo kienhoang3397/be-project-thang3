@@ -1,8 +1,8 @@
-const ProductTypeService = require('../services/ProductTypeService');
+const BrandService = require('../services/BrandService');
 const { validateRequiredInput } = require('../utils');
 const { CONFIG_MESSAGE_ERRORS } = require("../configs");
 
-const createProductType = async (req, res) => {
+const createBrand = async (req, res) => {
     try {
         const requiredFields = validateRequiredInput(req.body, ["name", "image"]);
 
@@ -14,7 +14,7 @@ const createProductType = async (req, res) => {
                 data: null,
             });
         }
-        const response = await ProductTypeService.createProductType(req.body)
+        const response = await BrandService.createBrand(req.body)
         return res.status(200).json(response)
     } catch (e) {
         return res.status(404).json({
@@ -22,19 +22,19 @@ const createProductType = async (req, res) => {
         })
     }
 }
-const getAllCategories = async (req, res) => {
+const getAllBrand = async (req, res) => {
     try {
-        const categories = await ProductTypeService.getAllProductTypes();
+        const Brand = await BrandService.getAllBrands();
         return res.status(200).json({
             status: "Success",
-            message: "Categories retrieved successfully",
-            data: categories,
+            message: "Brand retrieved successfully",
+            data: Brand,
         });
     } catch (error) {
         return res.status(CONFIG_MESSAGE_ERRORS.NOT_FOUND.status).json({
             status: "Error",
             typeError: CONFIG_MESSAGE_ERRORS.NOT_FOUND.type,
-            message: error.message || "An error occurred while fetching categories",
+            message: error.message || "An error occurred while fetching Brand",
             data: null,
         });
     }
@@ -43,6 +43,6 @@ const getAllCategories = async (req, res) => {
 
 
 module.exports = {
-    createProductType,
-    getAllCategories
+    createBrand,
+    getAllBrand
 }

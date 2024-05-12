@@ -3,7 +3,7 @@ const ProductType = require("../models/ProductTypeModel")
 
 const createProductType = (newProductType) => {
     return new Promise(async (resolve, reject) => {
-        const { name, } = newProductType
+        const { name, image } = newProductType
         try {
             const checkProduct = await ProductType.findOne({
                 name: name
@@ -16,6 +16,8 @@ const createProductType = (newProductType) => {
             }
             const newProductType = await ProductType.create({
                 name,
+                image
+                
               
             })
             if (newProductType) {
@@ -30,6 +32,27 @@ const createProductType = (newProductType) => {
         }
     })
 }
+const getAllProductTypes = async (limit, page) => {
+    try {
+        const totalProductTypes = await ProductType.countDocuments();
+        const productTypes = await ProductType.find()
+            .limit(limit)
+            .skip(page * limit);
+
+        return {
+            status: 'OK',
+            message: 'Success',
+            data: productTypes,
+            total: totalProductTypes,
+            pageCurrent: Number(page + 1),
+            totalPage: Math.ceil(totalProductTypes / limit)
+        };
+    } catch (error) {
+        throw error;
+    }
+};
+
 module.exports = {
     createProductType
+    , getAllProductTypes
 }

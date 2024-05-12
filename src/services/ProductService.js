@@ -1,193 +1,217 @@
-const Product = require("../models/ProductModel")
+const Product = require("../models/ProductModel");
+const ProductType = require("../models/ProductTypeModel");
+const mongoose = require('mongoose');
+const ObjectId = mongoose.Types.ObjectId;
 
-const createProduct = (newProduct) => {
-    return new Promise(async (resolve, reject) => {
-        const { name, image, type, countInStock, price, rating, description, discount } = newProduct;
-        try {
-            const discountStartDate = newProduct.discountStartDate && discount ? newProduct.discountStartDate : null;
-            const discountEndDate = newProduct.discountEndDate && discount ? newProduct.discountEndDate : null;
+const createProduct = async (newProduct) => {
+    try {
+        const { name, image, types, countInStock, price, rating, description, discount, sold ,brand} = newProduct;
 
-            const checkProduct = await Product.findOne({ name: name });
-            if (checkProduct !== null) {
-                resolve({
-                    status: 'ERR',
-                    message: 'The name of product is already'
-                });
-            }
+        const discountStartDate = newProduct.discountStartDate && discount ? newProduct.discountStartDate : null;
+        const discountEndDate = newProduct.discountEndDate && discount ? newProduct.discountEndDate : null;
 
-            const createdProduct = await Product.create({
-                name,
-                image,
-                type,
-                countInStock: Number(countInStock),
-                discount: discount ? discount : 0,
-                price,
-                rating,
-                description,
-                discountStartDate,
-                discountEndDate
-            });
-
-            if (createdProduct) {
-                resolve({
-                    status: 'OK',
-                    message: 'SUCCESS',
-                    data: createdProduct
-                });
-            }
-        } catch (e) {
-            console.log('Error:', e);
-            reject(e);
+        const checkProduct = await Product.findOne({ name: name });
+        if (checkProduct !== null) {
+            return {
+                status: 'ERR',
+                message: 'The name of product is already'
+            };
         }
-    });
+
+        const createdProduct = await Product.create({
+            name,
+            image,
+            types,
+            brand,
+            countInStock: Number(countInStock),
+            discount,
+            price,
+            rating,
+            description,
+            sold,
+            discountStartDate,
+            discountEndDate
+        });
+
+        return {
+            status: 'OK',
+            message: 'SUCCESS',
+            data: createdProduct
+        };
+    } catch (e) {
+        console.log('Error:', e);
+        throw e;
+    }
+};
+
+const updateProduct = async (id, data) => {
+    try {
+        const checkProduct = await Product.findOne({ _id: id });
+        if (checkProduct === null) {
+            return {
+                status: 'ERR',
+                message: 'The product is not defined'
+            };
+        }
+
+        const updatedProduct = await Product.findByIdAndUpdate(id, data, { new: true });
+        return {
+            status: 'OK',
+            message: 'SUCCESS',
+            data: updatedProduct
+        };
+    } catch (e) {
+        throw e;
+    }
+};
+
+const deleteProduct = async (id) => {
+    try {
+        const checkProduct = await Product.findOne({ _id: id });
+        if (checkProduct === null) {
+            return {
+                status: 'ERR',
+                message: 'The product is not defined'
+            };
+        }
+
+        await Product.findByIdAndDelete(id);
+        return {
+            status: 'OK',
+            message: 'Delete product success',
+        };
+    } catch (e) {
+        throw e;
+    }
+};
+
+const deleteManyProduct = async (ids) => {
+    try {
+        await Product.deleteMany({ _id: ids });
+        return {
+            status: 'OK',
+            message: 'Delete product success',
+        };
+    } catch (e) {
+        throw e;
+    }
+};
+
+const getDetailsProduct = async (id) => {
+    try {
+        const product = await Product.findOne({ _id: id });
+        if (product === null) {
+            return {
+                status: 'ERR',
+                message: 'The product is not defined'
+            };
+        }
+
+        return {
+            status: 'OK',
+            message: 'SUCCESS',
+            data: product
+        };
+    } catch (e) {
+        throw e;
+    }
 };
 
 
-const updateProduct = (id, data) => {
-    return new Promise(async (resolve, reject) => {
-        try {
-            const checkProduct = await Product.findOne({
-                _id: id
-            })
-            if (checkProduct === null) {
-                resolve({
-                    status: 'ERR',
-                    message: 'The product is not defined'
-                })
-            }
 
-            const updatedProduct = await Product.findByIdAndUpdate(id, data, { new: true })
-            resolve({
-                status: 'OK',
-                message: 'SUCCESS',
-                data: updatedProduct
-            })
-        } catch (e) {
-            reject(e)
-        }
-    })
-}
+const getAllProduct = async (page, limit, search, sort, types, minPrice, maxPrice, brand) => {
+    const pageNumber = parseInt(page) >= 1 ? parseInt(page) - 1 : 0;
+    const pageSize = parseInt(limit) || 5;
+    const searchTerm = search || "";
+    let sortBy = sort || "rating";
 
-const deleteProduct = (id) => {
-    return new Promise(async (resolve, reject) => {
-        try {
-            const checkProduct = await Product.findOne({
-                _id: id
-            })
-            if (checkProduct === null) {
-                resolve({
-                    status: 'ERR',
-                    message: 'The product is not defined'
-                })
-            }
+    sortBy = sortBy.split(",")[1] ? sortBy.split(",") : [sortBy];
+    let sortQuery = {};
 
-            await Product.findByIdAndDelete(id)
-            resolve({
-                status: 'OK',
-                message: 'Delete product success',
-            })
-        } catch (e) {
-            reject(e)
-        }
-    })
-}
+    // Check if sorting by price and adjust the sort order
+    if (sortBy[0] === "price") {
+        sortQuery[sortBy[0]] = sortBy[1] === "asc" ? 1 : -1;
+    } else {
+        sortQuery[sortBy[0]] = sortBy[1] || "asc";
+    }
 
-const deleteManyProduct = (ids) => {
-    return new Promise(async (resolve, reject) => {
-        try {
-            await Product.deleteMany({ _id: ids })
-            resolve({
-                status: 'OK',
-                message: 'Delete product success',
-            })
-        } catch (e) {
-            reject(e)
-        }
-    })
-}
+    const query = {
+        name: { $regex: searchTerm, $options: "i" }
+    };
 
-const getDetailsProduct = (id) => {
-    return new Promise(async (resolve, reject) => {
-        try {
-            const product = await Product.findOne({
-                _id: id
-            })
-            if (product === null) {
-                resolve({
-                    status: 'ERR',
-                    message: 'The product is not defined'
-                })
-            }
+    if (types) {
+        const typesArray = types.split(","); // Split types string into an array of type IDs
+        query.types = { $all: typesArray }; // Use $all operator to match products that belong to all specified types
+    }
 
-            resolve({
-                status: 'OK',
-                message: 'SUCESS',
-                data: product
-            })
-        } catch (e) {
-            reject(e)
-        }
-    })
-}
+    // Add brand filter to the query
+    if (brand) {
+        const brandArray = brand.split(","); // Chia chuỗi brand thành một mảng các ID thương hiệu
+        query.brand = { $in: brandArray }; // Sử dụng $in operator để tìm các sản phẩm thuộc ít nhất một trong các thương hiệu được chỉ định
+    }
 
-const getAllProduct = (limit, page, sort, filter) => {
-    return new Promise(async (resolve, reject) => {
-        try {
-            const totalProduct = await Product.countDocuments()
-            if (filter) {
-                const label = filter[0];
-                const allObjectFilter = await Product.find({ [label]: { '$regex': filter[1] } }).limit(limit).skip(page * limit)
-                resolve({
-                    status: 'OK',
-                    message: 'Success',
-                    data: allObjectFilter,
-                    total: totalProduct,
-                    pageCurrent: Number(page + 1),
-                    totalPage: Math.ceil(totalProduct / limit)
-                })
-            }
-            if (sort) {
-                const objectSort = {}
-                objectSort[sort[1]] = sort[0]
-                const allProductSort = await Product.find().limit(limit).skip(page * limit).sort(objectSort)
-                resolve({
-                    status: 'OK',
-                    message: 'Success',
-                    data: allProductSort,
-                    total: totalProduct,
-                    pageCurrent: Number(page + 1),
-                    totalPage: Math.ceil(totalProduct / limit)
-                })
-            }
-            const allProduct = await Product.find().limit(limit).skip(page * limit)
-            resolve({
-                status: 'OK',
-                message: 'Success',
-                data: allProduct,
-                total: totalProduct,
-                pageCurrent: Number(page + 1),
-                totalPage: Math.ceil(totalProduct / limit)
-            })
-        } catch (e) {
-            reject(e)
-        }
-    })
-}
 
-const getAllType = () => {
-    return new Promise(async (resolve, reject) => {
-        try {
-            const allType = await Product.distinct('type')
-            resolve({
-                status: 'OK',
-                message: 'Success',
-                data: allType,
-            })
-        } catch (e) {
-            reject(e)
-        }
-    })
-}
+
+
+    // Add price range filter to the query
+    if (minPrice !== undefined && maxPrice !== undefined) {
+        query.price = { $gte: parseFloat(minPrice), $lte: parseFloat(maxPrice) };
+    } else if (minPrice !== undefined) {
+        query.price = { $gte: parseFloat(minPrice) };
+    } else if (maxPrice !== undefined) {
+        query.price = { $lte: parseFloat(maxPrice) };
+    }
+
+    try {
+        // Populate types field with data from ProductType collection
+        const products = await Product.find(query)
+            .sort(sortQuery)
+            .skip(pageNumber * pageSize)
+            .limit(pageSize)
+            .populate('types');
+
+        const total = await Product.countDocuments(query);
+
+        return {
+            error: false,
+            total,
+            page: pageNumber + 1,
+            limit: pageSize,
+            products,
+        };
+    } catch (error) {
+        return {
+            error: true,
+            message: error.message
+        };
+    }
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const getAllType = async () => {
+    try {
+        const allType = await Product.distinct('type');
+        return {
+            status: 'OK',
+            message: 'Success',
+            data: allType,
+        };
+    } catch (e) {
+        throw e;
+    }
+};
 
 module.exports = {
     createProduct,
@@ -197,4 +221,4 @@ module.exports = {
     getAllProduct,
     deleteManyProduct,
     getAllType
-}
+};

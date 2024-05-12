@@ -1,5 +1,10 @@
 const UserService = require('../services/UserService')
 const JwtService = require('../services/JwtService')
+const jwt = require('jsonwebtoken')
+const nodemailer = require('nodemailer')
+const bcrypt = require('bcrypt')
+const User = require('../models/UserModel')
+const UserToken = require('../models/UserToken')
 
 const createUser = async (req, res) => {
     try {
@@ -100,94 +105,219 @@ const deleteUser = async (req, res) => {
     }
 }
 
-const deleteMany = async (req, res) => {
-    try {
-        const ids = req.body.ids
-        if (!ids) {
-            return res.status(200).json({
-                status: 'ERR',
-                message: 'The ids is required'
-            })
+const sendEmail = async (req, res, next) => {
+    const email = req.body.email;
+    const user = await User.findOne({ email: email });
+    if (!user) {
+        return res.status(404).json({
+            status: "ERR",
+            message: "User not found",
+            data: null,
+        });
+    }
+    const payload = {
+        email: user.email,
+    };
+    const expiresIn = 300;
+    const token = jwt.sign(payload, process.env.JWT_SECRET, {
+        expiresIn: expiresIn,
+    });
+
+    const newToken = new UserToken({
+        userId: user._id,
+        token: token,
+    });
+
+    const resetPasswordLink = `${process.env.HOST_FRONTEND}/reset-password/${token}`;
+console.log(resetPasswordLink)
+    const mailTransporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+            user: "thuyy566@gmail.com",
+            pass: "aedkcnsxnxctsxbw"
         }
-        const response = await UserService.deleteManyUser(ids)
-        return res.status(200).json(response)
-    } catch (e) {
-        return res.status(404).json({
-            message: e
-        })
-    }
-}
+    });
+    let mailDetails = {
+        from: "thuyy566@gmail.com",
+        to: email,
+        subject: "Reset Password",
+        html: `<!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Reset Password Email</title>
+                <style>
+                    body {
+                        font-family: Arial, sans-serif;
+                    }
+                    .container {
+                        max-width: 600px;
+                        margin: 0 auto;
+                        padding: 20px;
+                        border: 1px solid #ccc;
+                        border-radius: 5px;
+                    }
+                    h1 {
+                        color: #333;
+                    }
+                    p {
+                        margin-bottom: 20px;
+                    }
+                    a {
+                        color: #007bff;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <h1>Reset Your Password</h1>
+                    <p>Hello,</p>
+                    <p>You recently requested to reset your password for your account. Click the following link to reset your password:</p>
+                    <p><a href="${resetPasswordLink}">${resetPasswordLink}</a></p>
+                    <p>If you didn't request a password reset, you can safely ignore this email. Your password will not be changed.</p>
+                    <p>Thank you,</p>
+                    <p>The Team</p>
+                </div>
+            </body>
+            </html>`
+    };
 
-
-const getAllUser = async (req, res) => {
-    try {
-        const response = await UserService.getAllUser()
-        return res.status(200).json(response)
-    } catch (e) {
-        return res.status(404).json({
-            message: e
-        })
-    }
-}
-
-const getDetailsUser = async (req, res) => {
-    try {
-        const userId = req.params.id
-        if (!userId) {
+    mailTransporter.sendMail(mailDetails, function (err, data) {
+        if (err) {
+            return res.status(500).json({
+                status: "ERR",
+                message: "Internal Server Error",
+                data: null,
+            });
+        } else {
+            newToken.save();
             return res.status(200).json({
-                status: 'ERR',
-                message: 'The userId is required'
-            })
+                status: "OK",
+                message: "Send email successfully",
+                data: null,
+            });
         }
-        const response = await UserService.getDetailsUser(userId)
-        return res.status(200).json(response)
-    } catch (e) {
-        return res.status(404).json({
-            message: e
-        })
-    }
-}
+    });
+};
 
-const refreshToken = async (req, res) => {
-    try {
-        let token = req.headers.token.split(' ')[1]
-        if (!token) {
-            return res.status(200).json({
-                status: 'ERR',
-                message: 'The token is required'
-            })
+
+const resetPassword = async (req, res, next) => {
+    const token = req.body.token;
+    const newPassword = req.body.password;
+
+    jwt.verify(token, process.env.JWT_SECRET, async (err, data) => {
+        if (err) {
+            return res.status(401).json({ "message": "Token is invalid" });
+        } else {
+            try {
+                const user = await User.findOne({ email: data.email });
+                if (!user) {
+                    return res.status(404).json({ "message": "User not found" });
+                }
+                const salt = bcrypt.genSaltSync(10);
+                const encryptedPassword = bcrypt.hashSync(newPassword, salt);
+                user.password = encryptedPassword;
+                const updatedUser = await user.save();
+                return res.status(200).json({ "message": "Reset password successfully" });
+            } catch (error) {
+                console.error(error);
+                return res.status(500).json({ "message": "Internal server error" });
+            }
         }
-        const response = await JwtService.refreshTokenJwtService(token)
-        return res.status(200).json(response)
-    } catch (e) {
-        return res.status(404).json({
-            message: e
-        })
-    }
+    });
 }
 
+        const deleteMany = async (req, res) => {
+            try {
+                const ids = req.body.ids
+                if (!ids) {
+                    return res.status(200).json({
+                        status: 'ERR',
+                        message: 'The ids is required'
+                    })
+                }
+                const response = await UserService.deleteManyUser(ids)
+                return res.status(200).json(response)
+            } catch (e) {
+                return res.status(404).json({
+                    message: e
+                })
+            }
+        }
 
-const logoutUser = async (req, res) => {
-    try {
-        res.clearCookie('refresh_token')
-        return res.status(200).json({
-            status: 'OK',
-            message: 'Logout successfully'
-        })
-    } catch (e) {
-        return res.status(404).json({
-            message: e
-        })
-    }
-}
-module.exports = {
-    createUser,
-    loginUser,
-    updateUser,
-    deleteUser,
-    getAllUser,
-    getDetailsUser,
-    refreshToken,
-    logoutUser,
-    deleteMany
-}
+
+        const getAllUser = async (req, res) => {
+            try {
+                const response = await UserService.getAllUser()
+                return res.status(200).json(response)
+            } catch (e) {
+                return res.status(404).json({
+                    message: e
+                })
+            }
+        }
+
+        const getDetailsUser = async (req, res) => {
+            try {
+                const userId = req.params.id
+                if (!userId) {
+                    return res.status(200).json({
+                        status: 'ERR',
+                        message: 'The userId is required'
+                    })
+                }
+                const response = await UserService.getDetailsUser(userId)
+                return res.status(200).json(response)
+            } catch (e) {
+                return res.status(404).json({
+                    message: e
+                })
+            }
+        }
+
+        const refreshToken = async (req, res) => {
+            try {
+                let token = req.headers.token.split(' ')[1]
+                if (!token) {
+                    return res.status(200).json({
+                        status: 'ERR',
+                        message: 'The token is required'
+                    })
+                }
+                const response = await JwtService.refreshTokenJwtService(token)
+                return res.status(200).json(response)
+            } catch (e) {
+                return res.status(404).json({
+                    message: e
+                })
+            }
+        }
+
+
+        const logoutUser = async (req, res) => {
+            try {
+                res.clearCookie('refresh_token')
+                return res.status(200).json({
+                    status: 'OK',
+                    message: 'Logout successfully'
+                })
+            } catch (e) {
+                return res.status(404).json({
+                    message: e
+                })
+            }
+        }
+        module.exports = {
+            createUser,
+            loginUser,
+            updateUser,
+            deleteUser,
+            getAllUser,
+            getDetailsUser,
+            refreshToken,
+            logoutUser,
+            deleteMany,
+            sendEmail,
+            resetPassword
+        }
