@@ -46,7 +46,7 @@ const getAllProductTypes = async (limit, page) => {
             total: totalProductTypes,
             pageCurrent: Number(page + 1),
             totalPage: Math.ceil(totalProductTypes / limit)
-        };
+        }
     } catch (error) {
         throw error;
     }
