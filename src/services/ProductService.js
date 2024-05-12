@@ -30,7 +30,7 @@ const createProduct = async (newProduct) => {
             description,
             sold,
             discountStartDate,
-            discountEndDate
+            discountEndDate,
         });
 
         return {
