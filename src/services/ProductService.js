@@ -1,5 +1,6 @@
 const Product = require("../models/ProductModel");
 const ProductType = require("../models/ProductTypeModel");
+const Brand = require("../models/BrandModel");
 const mongoose = require('mongoose');
 const ObjectId = mongoose.Types.ObjectId;
 
@@ -97,23 +98,37 @@ const deleteManyProduct = async (ids) => {
     }
 };
 
-const getDetailsProduct = async (id) => {
+const getDetailsProduct = async (productId) => {
     try {
-        const product = await Product.findOne({ _id: id });
-        if (product === null) {
+        const product = await Product.findById(productId);
+        if (!product) {
             return {
-                status: 'ERR',
-                message: 'The product is not defined'
+                status: 'Error',
+                message: 'Product not found',
+                data: null,
             };
         }
+
+        const brand = await Brand.findById(product.brand);
+        const productTypes = await ProductType.find({
+            _id: { $in: product.types }
+        });
 
         return {
             status: 'OK',
             message: 'SUCCESS',
-            data: product
+            data: {
+                ...product.toObject(),
+                brand: brand ? brand.name : 'Unknown',
+                types: productTypes.map(type => type.name)
+            }
         };
-    } catch (e) {
-        throw e;
+    } catch (error) {
+        return {
+            status: 'Error',
+            message: error.message,
+            data: null
+        };
     }
 };
 

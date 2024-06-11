@@ -42,12 +42,12 @@ const loginUser = async (req, res) => {
         const reg = /^\w+([-+.']\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*$/
         const isCheckEmail = reg.test(email)
         if (!email || !password) {
-            return res.status(200).json({
+            return res.status(400).json({
                 status: 'ERR',
                 message: 'The input is required'
             })
         } else if (!isCheckEmail) {
-            return res.status(200).json({
+            return res.status(400).json({
                 status: 'ERR',
                 message: 'The input is email'
             })
@@ -128,8 +128,8 @@ const sendEmail = async (req, res, next) => {
         token: token,
     });
 
-    const resetPasswordLink = `${process.env.HOST_FRONTEND}/reset-password/${token}`;
-console.log(resetPasswordLink)
+    const resetPasswordLink = `${process.env.HOST_FRONTEND}/sign-in/forget-password/reset-password/${token}`;
+    console.log(resetPasswordLink)
     const mailTransporter = nodemailer.createTransport({
         service: "gmail",
         auth: {
@@ -228,96 +228,96 @@ const resetPassword = async (req, res, next) => {
     });
 }
 
-        const deleteMany = async (req, res) => {
-            try {
-                const ids = req.body.ids
-                if (!ids) {
-                    return res.status(200).json({
-                        status: 'ERR',
-                        message: 'The ids is required'
-                    })
-                }
-                const response = await UserService.deleteManyUser(ids)
-                return res.status(200).json(response)
-            } catch (e) {
-                return res.status(404).json({
-                    message: e
-                })
-            }
+const deleteMany = async (req, res) => {
+    try {
+        const ids = req.body.ids
+        if (!ids) {
+            return res.status(200).json({
+                status: 'ERR',
+                message: 'The ids is required'
+            })
         }
+        const response = await UserService.deleteManyUser(ids)
+        return res.status(200).json(response)
+    } catch (e) {
+        return res.status(404).json({
+            message: e
+        })
+    }
+}
 
 
-        const getAllUser = async (req, res) => {
-            try {
-                const response = await UserService.getAllUser()
-                return res.status(200).json(response)
-            } catch (e) {
-                return res.status(404).json({
-                    message: e
-                })
-            }
-        }
+const getAllUser = async (req, res) => {
+    try {
+        const response = await UserService.getAllUser()
+        return res.status(200).json(response)
+    } catch (e) {
+        return res.status(404).json({
+            message: e
+        })
+    }
+}
 
-        const getDetailsUser = async (req, res) => {
-            try {
-                const userId = req.params.id
-                if (!userId) {
-                    return res.status(200).json({
-                        status: 'ERR',
-                        message: 'The userId is required'
-                    })
-                }
-                const response = await UserService.getDetailsUser(userId)
-                return res.status(200).json(response)
-            } catch (e) {
-                return res.status(404).json({
-                    message: e
-                })
-            }
+const getDetailsUser = async (req, res) => {
+    try {
+        const userId = req.params.id
+        if (!userId) {
+            return res.status(200).json({
+                status: 'ERR',
+                message: 'The userId is required'
+            })
         }
+        const response = await UserService.getDetailsUser(userId)
+        return res.status(200).json(response)
+    } catch (e) {
+        return res.status(404).json({
+            message: e
+        })
+    }
+}
 
-        const refreshToken = async (req, res) => {
-            try {
-                let token = req.headers.token.split(' ')[1]
-                if (!token) {
-                    return res.status(200).json({
-                        status: 'ERR',
-                        message: 'The token is required'
-                    })
-                }
-                const response = await JwtService.refreshTokenJwtService(token)
-                return res.status(200).json(response)
-            } catch (e) {
-                return res.status(404).json({
-                    message: e
-                })
-            }
+const refreshToken = async (req, res) => {
+    try {
+        let token = req.headers.token.split(' ')[1]
+        if (!token) {
+            return res.status(200).json({
+                status: 'ERR',
+                message: 'The token is required'
+            })
         }
+        const response = await JwtService.refreshTokenJwtService(token)
+        return res.status(200).json(response)
+    } catch (e) {
+        return res.status(404).json({
+            message: e
+        })
+    }
+}
 
 
-        const logoutUser = async (req, res) => {
-            try {
-                res.clearCookie('refresh_token')
-                return res.status(200).json({
-                    status: 'OK',
-                    message: 'Logout successfully'
-                })
-            } catch (e) {
-                return res.status(404).json({
-                    message: e
-                })
-            }
-        }
-        module.exports = {
-            createUser,
-            loginUser,
-            updateUser,
-            deleteUser,
-            getAllUser,
-            getDetailsUser,
-            refreshToken,
-            logoutUser,
-            deleteMany,
-            sendEmail,
-            resetPassword
-        }
+const logoutUser = async (req, res) => {
+    try {
+        res.clearCookie('refresh_token')
+        return res.status(200).json({
+            status: 'OK',
+            message: 'Logout successfully'
+        })
+    } catch (e) {
+        return res.status(404).json({
+            message: e
+        })
+    }
+}
+module.exports = {
+    createUser,
+    loginUser,
+    updateUser,
+    deleteUser,
+    getAllUser,
+    getDetailsUser,
+    refreshToken,
+    logoutUser,
+    deleteMany,
+    sendEmail,
+    resetPassword
+}
